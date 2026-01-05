@@ -1,5 +1,5 @@
 from enum import Enum
-from htmlnode import HTMLNode, LeafNode, ParentNode
+from htmlnode import ParentNode
 from inline_markdown import text_to_textnodes
 from textnode import TextNode, TextType, text_node_to_html_node
 
@@ -61,8 +61,16 @@ def block_to_html_node(block):
     if block_type == BlockType.PARAGRAPH:
         return paragraph_to_html_node(block)
     if block_type == BlockType.HEADING:
-        return headings_to_html_node(block)    
-    
+        return headings_to_html_node(block)
+    if block_type == BlockType.CODE:
+        return code_to_html_node(block)
+    if block_type == BlockType.OLIST:
+        return olist_to_html_node(block)
+    if block_type == BlockType.ULIST:
+        return ulist_to_html_node(block)
+    if block_type == BlockType.QUOTE:
+        return quote_to_html_node(block)
+    raise ValueError("invalid block type")    
 
 def text_to_children(text):
     text_nodes = text_to_textnodes(text)
@@ -74,7 +82,7 @@ def text_to_children(text):
 
 
 def paragraph_to_html_node(block):
-    lines = block.split("/n")
+    lines = block.split("\n")
     paragraph = " ".join(lines)
     children = text_to_children(paragraph)
     return ParentNode("p", children)
@@ -96,12 +104,38 @@ def code_to_html_node(block):
     if not block.startswith("```") or not block.endswith("```"):
         raise ValueError("invalid code block")
     text = block[4:-3]
-    raw_text_node = TextNode(text, TextType.Text)
+    raw_text_node = TextNode(text, TextType.TEXT)
     child = text_node_to_html_node(raw_text_node)
     code = ParentNode("code", [child])
     return ParentNode("pre", [code])
 
+def olist_to_html_node(block):
+    items = block.split("\n")
+    html_list = []
+    for item in items:
+        text = item[3:]
+        children = text_to_children(text)
+        html_list.append(ParentNode("li", children))
+    return ParentNode("ol", html_list)
 
 
+def ulist_to_html_node(block):
+    items = block.split("\n")
+    html_list = []
+    for item in items:
+        text = item[2:]
+        children = text_to_children(text)
+        html_list.append(ParentNode("li", children))
+    return ParentNode("ul", html_list)
 
 
+def quote_to_html_node(block):
+    lines = block.split("\n")
+    new_lines = []
+    for line in lines:
+        if not line.startswith(">"):
+            return ValueError("invalid quote block")
+        new_lines.append(line.lstrip(">").strip())
+    content = " ".join(new_lines)
+    children = text_to_children(content)
+    return ParentNode("blockquote", children)
